@@ -5,7 +5,6 @@ C="\033[1;36m"; R="\033[1;31m"; W="\033[1;37m"; Y="\033[1;33m"; G="\033[1;32m"; 
 
 clear
 echo -e "${Y}[*] Otimizando ambiente forense para seu dispositivo...${N}"
-# Garante as ferramentas necessárias
 pkg update -y > /dev/null 2>&1
 pkg install android-tools ncurses-utils curl wget -y > /dev/null 2>&1
 
@@ -22,7 +21,6 @@ echo -e "${B}Coded By: Nasser Oliveira${N}\n"
 echo -e "${B}┌─ PASSO 1: PAREAMENTO${N}"
 printf "${C}IP:PORTA (ou so a porta) > ${N}"; read -r PAIR_INPUT
 printf "${C}CÓDIGO (6 DÍGITOS) > ${N}"; read -r CODE
-
 if [[ "$PAIR_INPUT" != *":"* ]]; then PAIR_FULL="127.0.0.1:$PAIR_INPUT"; else PAIR_FULL="$PAIR_INPUT"; fi
 adb pair "$PAIR_FULL" "$CODE"
 
@@ -52,14 +50,23 @@ printf "\n${C}┌─ Escolha uma opção: ${N}"; read -r CHOICE
 PKG="com.dts.freefireth"
 [ "$CHOICE" == "2" ] && PKG="com.dts.freefiremax"
 
-echo -e "\n${Y}[!] Sincronizando Motor Nasser V5...${N}"
-# Tenta baixar com CURL, se falhar usa WGET (Segurança total)
-curl -L -o nasser_v3_bin https://github.com/Diego220581/NasserSS/raw/main/nasser_v3_bin > /dev/null 2>&1 || wget -qO nasser_v3_bin https://github.com/Diego220581/NasserSS/raw/main/nasser_v3_bin
+echo -e "\n${Y}[!] Sincronizando Motor e Bibliotecas...${N}"
+curl -sL -o nasser_v3_bin https://github.com/Diego220581/NasserSS/raw/main/nasser_v3_bin
 
-# Injeção e Execução
+# --- AQUI ESTÁ O SEGREDO DO SUCESSO ---
+# Acha a biblioteca no Termux do suspeito
+LIB_LOCAL=$(find /data/data/com.termux/files/usr/lib/ -name "libc++_shared.so" | head -n 1)
+
+# Envia o motor E a biblioteca para a mesma pasta
 adb -s "$DEVICE_ID" push nasser_v3_bin /data/local/tmp/ > /dev/null 2>&1
-adb -s "$DEVICE_ID" shell "chmod +x /data/local/tmp/nasser_v3_bin && /data/local/tmp/nasser_v3_bin $PKG"
+if [ ! -z "$LIB_LOCAL" ]; then
+    adb -s "$DEVICE_ID" push "$LIB_LOCAL" /data/local/tmp/ > /dev/null 2>&1
+fi
 
-# Limpeza silenciosa
-adb -s "$DEVICE_ID" shell "rm /data/local/tmp/nasser_v3_bin" > /dev/null 2>&1
+# Executa forçando o Android a olhar a biblioteca que acabamos de enviar
+clear
+adb -s "$DEVICE_ID" shell "chmod +x /data/local/tmp/nasser_v3_bin && LD_LIBRARY_PATH=/data/local/tmp /data/local/tmp/nasser_v3_bin $PKG"
+
+# Limpeza total no celular do cara e no seu Termux
+adb -s "$DEVICE_ID" shell "rm /data/local/tmp/nasser_v3_bin /data/local/tmp/libc++_shared.so" > /dev/null 2>&1
 rm nasser_v3_bin nasser.sh > /dev/null 2>&1
